@@ -1,0 +1,40 @@
+# Hooks mirror CI (.github/workflows/ci.yml)
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.2
+    hooks:
+      - id: ruff-check
+        exclude: ^(\.agents/|\.cursor/)
+      - id: ruff-format
+        args: [--check]
+        exclude: ^(\.agents/|\.cursor/)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+        exclude: ^(\.agents/|\.cursor/)
+      - id: check-toml
+        exclude: ^(\.agents/|\.cursor/)
+      - id: trailing-whitespace
+        exclude: ^(\.agents/|\.cursor/)
+      - id: end-of-file-fixer
+        exclude: ^(\.agents/|\.cursor/)
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [--fix, lf]
+        exclude: ^(\.agents/|\.cursor/)
+  - repo: local
+    hooks:
+      - id: pyright
+        name: pyright
+        entry: bash -lc "uv run --extra test pyright"
+        language: system
+        pass_filenames: false
+        types: [python]
+      - id: complexipy
+        name: complexipy
+        entry: bash -lc "uv run --extra test complexipy src/mock_social_media_platform tests"
+        language: system
+        pass_filenames: false
+        types: [python]

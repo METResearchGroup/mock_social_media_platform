@@ -1,0 +1,65 @@
+[project]
+name = "mock-social-media-platform"
+version = "0.1.0"
+description = "Mock social media platform for agent-based experiments"
+readme = "README.md"
+authors = [
+    { name = "mark-torres10", email = "markptorres1@gmail.com" },
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+test = [
+    "ruff>=0.12.0",
+    "pyright>=1.1.400",
+    "complexipy>=5.0.0",
+    "pre-commit>=4.2.0",
+    "pytest>=8.0.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = [
+    ".agents",
+    ".cursor",
+    ".git",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "SIM",
+]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pyright]
+include = ["src/mock_social_media_platform", "tests"]
+exclude = [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.*",
+]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
+reportMissingTypeStubs = false

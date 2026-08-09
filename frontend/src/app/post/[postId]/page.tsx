@@ -1,10 +1,11 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AppHeader } from "@/components/chrome/AppHeader";
+import { AppShell } from "@/components/chrome/AppShell";
 import { PostThread } from "@/components/post/PostThread";
-import { getPostThread } from "@/lib/api";
-import type { PostThreadResponse } from "@/lib/types";
+import { getFeed, getPostThread } from "@/lib/api";
+import { uniqueAuthors } from "@/lib/format";
+import type { PostThreadResponse, UserSummary } from "@/lib/types";
 
 async function loadThread(
   postId: string,
@@ -25,48 +26,55 @@ async function loadThread(
   }
 }
 
+async function loadAuthors(): Promise<UserSummary[]> {
+  try {
+    const feed = await getFeed();
+    return uniqueAuthors(feed.posts);
+  } catch {
+    return [];
+  }
+}
+
 export default async function PostPage({
   params,
 }: {
   params: Promise<{ postId: string }>;
 }): Promise<ReactNode> {
   const { postId } = await params;
-  const result = await loadThread(postId);
+  const [result, authors] = await Promise.all([
+    loadThread(postId),
+    loadAuthors(),
+  ]);
 
   if (result.status === "ok") {
     return (
-      <>
-        <AppHeader title="Post" />
-        <Link href="/" className="back-link">
-          Home
-        </Link>
+      <AppShell active="post" authors={authors}>
+        <AppHeader
+          title="Post"
+          subtitle="Thread view with live engagement controls"
+          backHref="/"
+        />
         <PostThread
           post={result.thread.post}
           comments={result.thread.comments}
         />
-      </>
+      </AppShell>
     );
   }
 
   if (result.status === "not_found") {
     return (
-      <>
-        <AppHeader title="Post" />
-        <Link href="/" className="back-link">
-          Home
-        </Link>
+      <AppShell active="post" authors={authors}>
+        <AppHeader title="Post" subtitle="Missing thread" backHref="/" />
         <p className="page-error">Post not found</p>
-      </>
+      </AppShell>
     );
   }
 
   return (
-    <>
-      <AppHeader title="Post" />
-      <Link href="/" className="back-link">
-        Home
-      </Link>
+    <AppShell active="post" authors={authors}>
+      <AppHeader title="Post" subtitle="Could not load thread" backHref="/" />
       <p className="page-error">Could not load this post.</p>
-    </>
+    </AppShell>
   );
 }

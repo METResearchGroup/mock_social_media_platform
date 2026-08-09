@@ -1,5 +1,6 @@
 "use client";
 
+import { Heart, MessageCircle, Repeat2 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { likePost, retweetPost } from "@/lib/api";
@@ -13,6 +14,8 @@ export function EngagementBar({
   initialEngagement: EngagementMetrics;
 }): ReactNode {
   const [engagement, setEngagement] = useState(initialEngagement);
+  const [liked, setLiked] = useState(false);
+  const [retweeted, setRetweeted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<"like" | "retweet" | null>(null);
 
@@ -22,6 +25,7 @@ export function EngagementBar({
     try {
       const result = await likePost(postId);
       setEngagement(result.post.engagement);
+      setLiked(true);
     } catch {
       setError("Could not like this post.");
     } finally {
@@ -35,6 +39,7 @@ export function EngagementBar({
     try {
       const result = await retweetPost(postId);
       setEngagement(result.post.engagement);
+      setRetweeted(true);
     } catch {
       setError("Could not retweet this post.");
     } finally {
@@ -44,23 +49,57 @@ export function EngagementBar({
 
   return (
     <div className="engagement-bar">
-      <button
-        type="button"
-        className="engagement-button"
-        onClick={onLike}
-        disabled={pending !== null}
-      >
-        Like ({engagement.like_count})
-      </button>
-      <button
-        type="button"
-        className="engagement-button"
-        onClick={onRetweet}
-        disabled={pending !== null}
-      >
-        Retweet ({engagement.retweet_count})
-      </button>
-      <span className="reply-count">{engagement.reply_count} replies</span>
+      <div className="detail-stats" aria-label="Engagement summary">
+        <span>
+          <strong>{engagement.retweet_count}</strong> Retweets
+        </span>
+        <span>
+          <strong>{engagement.like_count}</strong> Likes
+        </span>
+        <span>
+          <strong>{engagement.reply_count}</strong> Replies
+        </span>
+      </div>
+      <div className="engagement-actions">
+        <button
+          type="button"
+          className="engagement-button is-reply"
+          disabled
+          aria-label={`${engagement.reply_count} replies`}
+        >
+          <MessageCircle aria-hidden="true" />
+          <span className="engagement-label">Reply</span>
+          <span className="engagement-count">{engagement.reply_count}</span>
+        </button>
+        <button
+          type="button"
+          className={
+            retweeted
+              ? "engagement-button is-retweet is-active"
+              : "engagement-button is-retweet"
+          }
+          onClick={onRetweet}
+          disabled={pending !== null}
+          aria-label={`Retweet, ${engagement.retweet_count}`}
+        >
+          <Repeat2 aria-hidden="true" />
+          <span className="engagement-label">Retweet</span>
+          <span className="engagement-count">{engagement.retweet_count}</span>
+        </button>
+        <button
+          type="button"
+          className={
+            liked ? "engagement-button is-like is-active" : "engagement-button is-like"
+          }
+          onClick={onLike}
+          disabled={pending !== null}
+          aria-label={`Like, ${engagement.like_count}`}
+        >
+          <Heart aria-hidden="true" fill={liked ? "currentColor" : "none"} />
+          <span className="engagement-label">Like</span>
+          <span className="engagement-count">{engagement.like_count}</span>
+        </button>
+      </div>
       {error ? <p className="error-text">{error}</p> : null}
     </div>
   );

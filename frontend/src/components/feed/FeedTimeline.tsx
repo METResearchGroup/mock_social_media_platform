@@ -6,8 +6,8 @@ import type { Post } from "@/lib/types";
 export function FeedTimeline({ posts }: { posts: Post[] }): ReactNode {
   return (
     <section className="timeline" aria-label="Home feed">
-      {posts.map((post) => (
-        <FeedPostRow key={post.id} post={post} />
+      {posts.map((post, index) => (
+        <FeedPostRow key={post.id} post={post} index={index} />
       ))}
     </section>
   );

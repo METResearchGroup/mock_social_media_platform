@@ -1,46 +1,63 @@
+import { ChevronRight, Heart, MessageCircle, Repeat2 } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { avatarTone, formatTimestamp, initials } from "@/lib/format";
 import type { Post } from "@/lib/types";
 
-function formatTimestamp(value: string): string {
-  const date = new Date(value);
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function initials(displayName: string): string {
-  return displayName
-    .split(" ")
-    .map((part) => part[0] ?? "")
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-export function FeedPostRow({ post }: { post: Post }): ReactNode {
+export function FeedPostRow({
+  post,
+  index = 0,
+  showOpenCue = true,
+}: {
+  post: Post;
+  index?: number;
+  showOpenCue?: boolean;
+}): ReactNode {
   return (
-    <article className="post-row">
-      <div className="avatar" aria-hidden="true">
+    <article
+      className="post-row"
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+    >
+      <div
+        className={`avatar ${avatarTone(post.author.handle)}`}
+        aria-hidden="true"
+      >
         {initials(post.author.display_name)}
       </div>
       <div className="post-body">
         <div className="post-meta">
           <span className="display-name">{post.author.display_name}</span>
           <span className="handle">@{post.author.handle}</span>
-          <span className="timestamp">{formatTimestamp(post.created_at)}</span>
+          <span className="meta-dot" aria-hidden="true">
+            ·
+          </span>
+          <time className="timestamp" dateTime={post.created_at}>
+            {formatTimestamp(post.created_at)}
+          </time>
         </div>
         <Link href={`/post/${post.id}`} className="post-text-link">
           <p className="post-text">{post.text}</p>
+          {showOpenCue ? (
+            <span className="open-thread">
+              Open thread
+              <ChevronRight aria-hidden="true" size={16} />
+            </span>
+          ) : null}
         </Link>
         <div className="engagement-counts" aria-label="Engagement counts">
-          <span>{post.engagement.reply_count} replies</span>
-          <span>{post.engagement.retweet_count} retweets</span>
-          <span>{post.engagement.like_count} likes</span>
+          <span className="metric">
+            <MessageCircle aria-hidden="true" />
+            {post.engagement.reply_count}
+          </span>
+          <span className="metric">
+            <Repeat2 aria-hidden="true" />
+            {post.engagement.retweet_count}
+          </span>
+          <span className="metric">
+            <Heart aria-hidden="true" />
+            {post.engagement.like_count}
+          </span>
         </div>
       </div>
     </article>

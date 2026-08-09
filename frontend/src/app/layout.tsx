@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
-import { Source_Sans_3 } from "next/font/google";
+import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "./globals.css";
 
-const sourceSans = Source_Sans_3({
+const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-source-sans",
+  variable: "--font-sans",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
-  title: "Mock Social Media",
+  title: "Mock Social",
   description: "Local mock social media feed and post threads",
 };
 
@@ -21,8 +26,8 @@ export default function RootLayout({
 }>): ReactNode {
   return (
     <html lang="en">
-      <body className={sourceSans.variable} style={{ fontFamily: "var(--font-source-sans), sans-serif" }}>
-        <main>{children}</main>
+      <body className={`${plusJakarta.variable} ${fraunces.variable}`}>
+        {children}
       </body>
     </html>
   );

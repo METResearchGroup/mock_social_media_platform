@@ -36,7 +36,7 @@ export function FeedPostRow({
             {formatTimestamp(post.created_at)}
           </time>
         </div>
-        <Link href={`/post/${post.id}`} className="post-text-link">
+        <Link href={`/post/${encodeURIComponent(post.id)}`} className="post-text-link">
           <p className="post-text">{post.text}</p>
           {showOpenCue ? (
             <span className="open-thread">

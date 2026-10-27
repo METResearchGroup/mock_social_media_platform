@@ -79,3 +79,16 @@ htmlcov/
 # Database
 *.sqlite
 *.db
+
+# Terraform
+**/.terraform/
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/.terraform.tfstate.lock.info
+**/*.tfvars
+
+# Study CSVs stay on S3 at the registry key.
+shared/data/raw/**/*.csv
+
+# Local sample build files. The uploaded copies live in S3.
+experiments/**/.local/

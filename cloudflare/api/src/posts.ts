@@ -66,9 +66,12 @@ export function toPost(row: PostRow): PostJson {
 }
 
 export async function listFeed(env: Env): Promise<PostJson[]> {
+  // The home timeline stays on the seed authors. Sample posts are served by id
+  // from a named feed, so this query does not return the 40,000 study rows.
   const result = await env.DB.prepare(
     `SELECT ${POST_COLUMNS} ${POST_FROM}
      WHERE p.parent_post_id IS NULL
+       AND p.author_id IN ('user_ada', 'user_grace', 'user_alan')
      ORDER BY p.created_at DESC`,
   ).all<PostRow>();
   return (result.results ?? []).map(toPost);

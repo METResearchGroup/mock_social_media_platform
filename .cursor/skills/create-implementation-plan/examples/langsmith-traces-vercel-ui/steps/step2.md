@@ -29,7 +29,7 @@ Unit tests under `apps/langsmith-trace-viewer/src/lib/langsmith/__tests__/` call
 - Vercel / CI deploy configs
 - Any write/update/delete LangSmith APIs
 
-## Contracts (freeze before behavior)
+## Contracts (confirm before behavior)
 
 List item fields exposed to later UI: id, name, status, latency (ms), start time.
 
@@ -40,14 +40,14 @@ Fixed window: start = now − 24h, end = now. Project name always from env. No p
 ## Work (implement-from-spec order)
 
 1. **Scaffold:** empty `types.ts`, `client.ts`, `fetch-traces.ts` with stub bodies; test file imports the public functions.
-2. **Contracts:** freeze the list/detail types and function signatures; stop if reviewing in a live run—this example assumes approval already given.
-3. **Test design (write failing tests first):**
+2. **Contracts:** confirm the list/detail types and function signatures; stop if reviewing in a live run—this example assumes approval already given.
+3. **Tests for the fetcher:**
    - Happy list: stub returns two runs → mapped list items with name, status, latency, start time.
    - Happy detail: stub returns one run → mapped detail including inputs/outputs.
    - Detail error run: stub includes error → error text present on detail.
    - Upstream 401/403 → fetcher throws a distinct auth/config error (not an empty list).
    - Upstream 404 on get-by-id → distinct not-found error.
-4. **Flesh:** implement client + mapper + list/get until those tests pass. No UI.
+4. **Implement:** client + mapper + list/get until those tests pass. No UI.
 
 ## Commands (exact)
 
@@ -57,15 +57,13 @@ From `apps/langsmith-trace-viewer/`:
 npm test -- --run src/lib/langsmith/__tests__/fetch-traces.test.ts
 ```
 
-Expected before implementation: failures on unimplemented stubs (not import errors).
-
-Expected after implementation: all tests in that file pass (exit code `0`).
+Expected: `npm test` exits `0`, and every test in that file passes.
 
 ## Pass / fail
 
 | Check | Pass | Fail |
 | --- | --- | --- |
-| Tests exist first | Failures are assertion/NotImplemented, then turn green | Implementation committed with no tests |
+| Tests | Each behavior listed above has a passing test | A listed behavior has no test, or a test fails |
 | List mapping | Only required list fields; 24h window passed into the API call | Wrong window or extra product scope (tags/filters UI) |
 | Detail mapping | Inputs/outputs/error surfaced when present | Silent drop of error field |
 | Auth failure | Throws; does not return `[]` | Empty list on 401 |

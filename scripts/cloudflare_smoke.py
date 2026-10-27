@@ -360,10 +360,100 @@ def check_hosted_feeds(api: str, ui: str, failures: list[str]) -> None:
     )
 
 
+def check_study_feeds(
+    api: str,
+    example_feed_id: str,
+    unknown_feed_id: str,
+    failures: list[str],
+) -> None:
+    """Check the Study 2 example feed and the unknown-refs feed.
+
+    Prints ids and statuses. Does not print post text.
+    """
+
+    detail_status, _, detail_raw = request(f"{api}/api/v1/feeds/{example_feed_id}")
+    detail = require_dict(as_json(detail_raw))
+    posts = detail.get("posts") if detail is not None else None
+    statuses = (
+        [item.get("status") for item in posts if isinstance(item, dict)]
+        if isinstance(posts, list)
+        else []
+    )
+    refs = (
+        [item.get("ref") for item in posts if isinstance(item, dict)]
+        if isinstance(posts, list)
+        else []
+    )
+    print(
+        f"GET /api/v1/feeds/{example_feed_id} -> {detail_status} "
+        f"count={len(statuses)} known={statuses.count('known')}"
+    )
+    if (
+        detail_status != 200
+        or len(statuses) != 100
+        or any(item != "known" for item in statuses)
+    ):
+        failures.append(
+            f"example feed returned {detail_status} count={len(statuses)} "
+            f"known={statuses.count('known')}"
+        )
+        return
+
+    skeleton_status, _, skeleton_raw = request(
+        f"{api}/xrpc/app.bsky.feed.getFeedSkeleton?feed={example_feed_id}&limit=100"
+    )
+    skeleton = require_dict(as_json(skeleton_raw))
+    items = skeleton.get("feed") if skeleton is not None else None
+    skeleton_ids = (
+        [item.get("post") for item in items if isinstance(item, dict)]
+        if isinstance(items, list)
+        else []
+    )
+    print(
+        f"GET getFeedSkeleton example limit=100 -> {skeleton_status} "
+        f"count={len(skeleton_ids)} cursor={None if skeleton is None else skeleton.get('cursor')}"
+    )
+    if (
+        skeleton_status != 200
+        or skeleton is None
+        or skeleton_ids != refs
+        or "cursor" in skeleton
+        or len(skeleton_ids) != 100
+    ):
+        failures.append("example skeleton did not return the same 100 ids in order")
+    else:
+        print("example_skeleton_ids=" + ",".join(str(item) for item in skeleton_ids))
+
+    unknown_status, _, unknown_raw = request(f"{api}/api/v1/feeds/{unknown_feed_id}")
+    unknown = require_dict(as_json(unknown_raw))
+    unknown_posts = unknown.get("posts") if unknown is not None else None
+    unknown_rows = (
+        [
+            (item.get("ref"), item.get("status"))
+            for item in unknown_posts
+            if isinstance(item, dict)
+        ]
+        if isinstance(unknown_posts, list)
+        else []
+    )
+    foreign = [ref for ref, status in unknown_rows if status == "unknown"]
+    print(
+        f"GET /api/v1/feeds/{unknown_feed_id} -> {unknown_status} "
+        f"count={len(unknown_rows)} unknown={len(foreign)}"
+    )
+    if unknown_status != 200 or len(foreign) != 3 or len(unknown_rows) != 13:
+        failures.append(
+            f"unknown-refs feed returned {unknown_status} "
+            f"count={len(unknown_rows)} unknown={len(foreign)}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--api-url", required=True)
     parser.add_argument("--ui-url", required=True)
+    parser.add_argument("--example-feed-id", default="")
+    parser.add_argument("--unknown-feed-id", default="")
     args = parser.parse_args()
     api = args.api_url.rstrip("/")
     ui = args.ui_url.rstrip("/")
@@ -397,6 +487,11 @@ def main() -> None:
         failures,
     )
     check_hosted_feeds(api, ui, failures)
+    if args.example_feed_id or args.unknown_feed_id:
+        if not args.example_feed_id or not args.unknown_feed_id:
+            failures.append("example and unknown feed ids must be passed together")
+        else:
+            check_study_feeds(api, args.example_feed_id, args.unknown_feed_id, failures)
     if failures:
         print("FAILED")
         for failure in failures:

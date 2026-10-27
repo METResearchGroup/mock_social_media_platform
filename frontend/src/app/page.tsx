@@ -61,7 +61,7 @@ export default async function HomePage(): Promise<ReactNode> {
             <ul className="seed-list">
               {posts.map((post) => (
                 <li key={post.id}>
-                  <a className="text-link" href={`/post/${post.id}`}>
+                  <a className="text-link" href={`/post/${encodeURIComponent(post.id)}`}>
                     {post.id}
                   </a>
                   <span>{post.text}</span>

@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "boto3>=1.35.0",
     "fastapi[standard]>=0.141.1",
     "uvicorn[standard]>=0.52.1",
 ]
@@ -61,7 +62,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pyright]
-include = ["src/mock_social_media_platform", "tests"]
+include = ["src/mock_social_media_platform", "shared", "experiments", "scripts", "tests"]
 exclude = [
     "**/__pycache__",
     "**/node_modules",

@@ -4,7 +4,8 @@
 
 - Exact file paths always
 - Exact commands with expected output
-- DRY, YAGNI, TDD, frequent commits
+- DRY, YAGNI, frequent commits
+- Tests only for production logic with real behavior
 - Delegated tasks must be impossible to misread.
 
 ## Overview
@@ -48,14 +49,14 @@ Prefer one edge middleware that owns correlation and access logging so handlers 
 
 1. **Incoming header:** Accept `X-Request-ID`. Valid = non-empty string, max 128 chars, printable ASCII only (`0x20`–`0x7E`). Invalid or missing → generate a new UUID4 string.
 2. **Success bodies:** Response header only; do not change success JSON payloads.
-3. **Log destination:** stdout JSON only (one line per event). No dual human-readable formatter in this slice.
+3. **Log destination:** stdout JSON only (one line per event). No dual human-readable formatter in this task.
 4. **Route scope:** Middleware registered for the whole app. Access start/end logs emitted for all routes except `/health` and `/ready`. Request id is still assigned and echoed on those health routes.
 
 ## Steps
 
 ### Step 1: Define request-id and JSON log contracts
 
-Lock header/validation rules, log event fields, and error-body field. Contracts and failing tests only. See [steps/step1.md](steps/step1.md).
+Lock header/validation rules, log event fields, and error-body field. Confirm the contracts, and add tests for the id resolver and the log-event builders. See [steps/step1.md](steps/step1.md).
 
 ### Step 2: Add correlation middleware
 
@@ -67,7 +68,7 @@ Shared error helper and exception handlers include the same request id on 4xx/5x
 
 ### Step 4: Verify end-to-end on the inference route
 
- Full `POST /v1/infer` success and failure coverage; confirm no metrics/tracing vendor deps. See [steps/step4.md](steps/step4.md).
+Check `POST /v1/infer` success and failure paths, and confirm no metrics or tracing vendor dependencies. See [steps/step4.md](steps/step4.md).
 
 ## What "done" looks like
 

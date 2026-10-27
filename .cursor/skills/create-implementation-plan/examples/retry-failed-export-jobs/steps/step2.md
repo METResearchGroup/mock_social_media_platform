@@ -2,8 +2,8 @@
 
 ## Scope
 
-- **Caller:** Pure functions / small module consumed later by `src/exports/retry_worker.py` (Step 3). This step’s immediate caller for TDD is unit tests.
-- **Slice:** Compute backoff delay from attempt count; decide whether a failed job is eligible to requeue or must go dead letter.
+- **Caller:** Pure functions in a small module. Step 3's `src/exports/retry_worker.py` calls them.
+- **Task:** Compute backoff delay from attempt count; decide whether a failed job is eligible to requeue or must go dead letter.
 - **Out of scope:** Claiming rows, publishing queue messages, process main loop, changing CSV worker.
 
 ## Files to inspect

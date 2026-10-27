@@ -17,7 +17,7 @@ export function AppHeader({
     <header className="app-header">
       <div className="header-row">
         {backHref ? (
-          <Link href={backHref} className="back-chip" aria-label="Back to feed">
+          <Link href={backHref} className="back-chip" aria-label="Back">
             <ArrowLeft aria-hidden="true" size={18} />
             <span>Back</span>
           </Link>

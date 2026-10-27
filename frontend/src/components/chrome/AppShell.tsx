@@ -7,17 +7,19 @@ import type { UserSummary } from "@/lib/types";
 export function AppShell({
   active,
   authors,
+  wide = false,
   children,
 }: {
-  active: "home" | "post";
+  active?: "home" | "post" | "admin";
   authors: UserSummary[];
+  wide?: boolean;
   children: React.ReactNode;
 }): ReactNode {
   return (
-    <div className="app-shell">
+    <div className={wide ? "app-shell app-shell-wide" : "app-shell"}>
       <SideNav active={active} />
       <div className="center-column">{children}</div>
-      <RightRail authors={authors} />
+      {wide ? null : <RightRail authors={authors} />}
     </div>
   );
 }

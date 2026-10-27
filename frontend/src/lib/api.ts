@@ -1,8 +1,22 @@
 import type {
+  CreateFeedResponse,
   EngagementActionResponse,
+  FeedDetail,
+  FeedListResponse,
   FeedResponse,
+  FeedSummary,
   PostThreadResponse,
 } from "./types";
+
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
 
 function apiBaseUrl(): string {
   const base = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -52,4 +66,60 @@ export async function retweetPost(
     cache: "no-store",
   });
   return parseJson<EngagementActionResponse>(response);
+}
+
+async function readDetail(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    if (typeof body.detail === "string" && body.detail.length > 0) {
+      return body.detail;
+    }
+  } catch {
+    return `Request failed (${response.status})`;
+  }
+  return `Request failed (${response.status})`;
+}
+
+async function parseApi<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new ApiError(response.status, await readDetail(response));
+  }
+  return (await response.json()) as T;
+}
+
+export async function listHostedFeeds(): Promise<FeedSummary[]> {
+  const response = await fetch(`${apiBaseUrl()}/api/v1/feeds`, {
+    cache: "no-store",
+  });
+  const body = await parseApi<FeedListResponse>(response);
+  return body.feeds;
+}
+
+export async function getHostedFeed(feedId: string): Promise<FeedDetail> {
+  const response = await fetch(`${apiBaseUrl()}/api/v1/feeds/${feedId}`, {
+    cache: "no-store",
+  });
+  return parseApi<FeedDetail>(response);
+}
+
+export async function recordFeedLoad(feedId: string): Promise<FeedDetail> {
+  const response = await fetch(`${apiBaseUrl()}/api/v1/feeds/${feedId}/loads`, {
+    method: "POST",
+    cache: "no-store",
+  });
+  return parseApi<FeedDetail>(response);
+}
+
+export async function createHostedFeed(
+  name: string,
+  posts: string[],
+): Promise<FeedSummary> {
+  const response = await fetch(`${apiBaseUrl()}/api/v1/feeds`, {
+    method: "POST",
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, posts }),
+  });
+  const body = await parseApi<CreateFeedResponse>(response);
+  return body.feed;
 }

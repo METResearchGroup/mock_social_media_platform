@@ -1,170 +1,45 @@
 /**
  * Public mock feed API on a Cloudflare Worker.
  *
- * Same JSON shape as the FastAPI app:
+ * Existing JSON routes:
  * GET /api/v1/feed
  * GET /api/v1/posts/{post_id}
  * POST /api/v1/posts/{post_id}/like
  * POST /api/v1/posts/{post_id}/retweet
  *
- * Counts live in D1 so a like survives the next isolate.
+ * Hosted feeds:
+ * POST /api/v1/feeds
+ * GET /api/v1/feeds
+ * GET /api/v1/feeds/{feed_id}
+ * POST /api/v1/feeds/{feed_id}/loads
+ * GET /xrpc/app.bsky.feed.getFeedSkeleton?feed={feed_id}&limit=&cursor=
+ *
+ * getFeedSkeleton returns { feed: [{ post }], cursor? }.
+ * cursor is the next offset. It is omitted on the last page.
+ * Unknown identifiers are stored and returned unchanged.
+ * A public page load is the only call that increments load_count.
  */
 
-const POST_COLUMNS = `
-  p.id,
-  p.text,
-  p.created_at,
-  p.like_count,
-  p.retweet_count,
-  p.reply_count,
-  p.parent_post_id,
-  u.id AS author_id,
-  u.handle,
-  u.display_name
-`;
-
-const POST_FROM = `
-  FROM posts p
-  JOIN users u ON u.id = p.author_id
-`;
-
-type PostRow = {
-  id: string;
-  text: string;
-  created_at: string;
-  like_count: number;
-  retweet_count: number;
-  reply_count: number;
-  parent_post_id: string | null;
-  author_id: string;
-  handle: string;
-  display_name: string;
-};
-
-type PostJson = {
-  id: string;
-  author: {
-    id: string;
-    handle: string;
-    display_name: string;
-  };
-  text: string;
-  created_at: string;
-  engagement: {
-    like_count: number;
-    retweet_count: number;
-    reply_count: number;
-  };
-  parent_post_id: string | null;
-};
+import {
+  handleCreateFeed,
+  handleGetFeed,
+  handleGetFeedSkeleton,
+  handleListFeeds,
+  handleRecordLoad,
+} from "./feeds";
+import { corsHeaders, decodePathPart, jsonResponse } from "./http";
+import { getPost, incrementColumn, listComments, listFeed } from "./posts";
 
 function log(event: string, fields: Record<string, string | number | boolean | null>): void {
   console.log(JSON.stringify({ event, ...fields }));
-}
-
-function allowedOrigins(env: Env): Set<string> {
-  return new Set(
-    env.CORS_ORIGINS.split(",")
-      .map((origin) => origin.trim())
-      .filter((origin) => origin.length > 0),
-  );
-}
-
-function corsHeaders(request: Request, env: Env): Headers {
-  const headers = new Headers();
-  const origin = request.headers.get("Origin");
-  if (origin !== null && allowedOrigins(env).has(origin)) {
-    headers.set("Access-Control-Allow-Origin", origin);
-    headers.set("Vary", "Origin");
-    headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    headers.set("Access-Control-Allow-Headers", "Content-Type");
-    headers.set("Access-Control-Max-Age", "86400");
-  }
-  return headers;
-}
-
-function jsonResponse(
-  request: Request,
-  env: Env,
-  status: number,
-  body: unknown,
-): Response {
-  const headers = corsHeaders(request, env);
-  headers.set("Content-Type", "application/json");
-  return new Response(JSON.stringify(body), { status, headers });
-}
-
-function toPost(row: PostRow): PostJson {
-  return {
-    id: row.id,
-    author: {
-      id: row.author_id,
-      handle: row.handle,
-      display_name: row.display_name,
-    },
-    text: row.text,
-    created_at: row.created_at,
-    engagement: {
-      like_count: row.like_count,
-      retweet_count: row.retweet_count,
-      reply_count: row.reply_count,
-    },
-    parent_post_id: row.parent_post_id,
-  };
-}
-
-async function listFeed(env: Env): Promise<PostJson[]> {
-  const result = await env.DB.prepare(
-    `SELECT ${POST_COLUMNS} ${POST_FROM}
-     WHERE p.parent_post_id IS NULL
-     ORDER BY p.created_at DESC`,
-  ).all<PostRow>();
-  return (result.results ?? []).map(toPost);
-}
-
-async function getPost(env: Env, postId: string): Promise<PostJson | null> {
-  const row = await env.DB.prepare(
-    `SELECT ${POST_COLUMNS} ${POST_FROM} WHERE p.id = ?`,
-  )
-    .bind(postId)
-    .first<PostRow>();
-  return row === null ? null : toPost(row);
-}
-
-async function listComments(env: Env, postId: string): Promise<PostJson[]> {
-  const result = await env.DB.prepare(
-    `SELECT ${POST_COLUMNS} ${POST_FROM}
-     WHERE p.parent_post_id = ?
-     ORDER BY p.created_at ASC`,
-  )
-    .bind(postId)
-    .all<PostRow>();
-  return (result.results ?? []).map(toPost);
-}
-
-async function incrementColumn(
-  env: Env,
-  postId: string,
-  sql: string,
-): Promise<PostJson | null> {
-  const updated = await env.DB.prepare(sql).bind(postId).run();
-  if ((updated.meta.changes ?? 0) === 0) {
-    return null;
-  }
-  return getPost(env, postId);
 }
 
 function notFound(request: Request, env: Env): Response {
   return jsonResponse(request, env, 404, { detail: "Post not found" });
 }
 
-function postIdFrom(match: RegExpMatchArray): string | null {
-  try {
-    const postId = decodeURIComponent(match[1]);
-    return postId.length > 0 ? postId : null;
-  } catch {
-    return null;
-  }
+function methodNotAllowed(request: Request, env: Env): Response {
+  return jsonResponse(request, env, 405, { detail: "Method not allowed" });
 }
 
 async function route(request: Request, env: Env): Promise<Response> {
@@ -183,9 +58,40 @@ async function route(request: Request, env: Env): Promise<Response> {
     return jsonResponse(request, env, 200, { posts: await listFeed(env) });
   }
 
+  if (pathname === "/xrpc/app.bsky.feed.getFeedSkeleton") {
+    if (request.method !== "GET") {
+      return methodNotAllowed(request, env);
+    }
+    return handleGetFeedSkeleton(request, env);
+  }
+
+  if (pathname === "/api/v1/feeds") {
+    if (request.method === "GET") {
+      return handleListFeeds(request, env);
+    }
+    if (request.method === "POST") {
+      return handleCreateFeed(request, env);
+    }
+    return methodNotAllowed(request, env);
+  }
+
+  if (/^\/api\/v1\/feeds\/[^/]+\/loads$/.test(pathname)) {
+    if (request.method !== "POST") {
+      return methodNotAllowed(request, env);
+    }
+    return handleRecordLoad(request, env);
+  }
+
+  if (/^\/api\/v1\/feeds\/[^/]+$/.test(pathname)) {
+    if (request.method !== "GET") {
+      return methodNotAllowed(request, env);
+    }
+    return handleGetFeed(request, env);
+  }
+
   const postMatch = pathname.match(/^\/api\/v1\/posts\/([^/]+)$/);
   if (postMatch !== null && request.method === "GET") {
-    const postId = postIdFrom(postMatch);
+    const postId = decodePathPart(postMatch[1] ?? "");
     if (postId === null) {
       return notFound(request, env);
     }
@@ -201,7 +107,7 @@ async function route(request: Request, env: Env): Promise<Response> {
 
   const likeMatch = pathname.match(/^\/api\/v1\/posts\/([^/]+)\/like$/);
   if (likeMatch !== null && request.method === "POST") {
-    const postId = postIdFrom(likeMatch);
+    const postId = decodePathPart(likeMatch[1] ?? "");
     if (postId === null) {
       return notFound(request, env);
     }
@@ -218,7 +124,7 @@ async function route(request: Request, env: Env): Promise<Response> {
 
   const retweetMatch = pathname.match(/^\/api\/v1\/posts\/([^/]+)\/retweet$/);
   if (retweetMatch !== null && request.method === "POST") {
-    const postId = postIdFrom(retweetMatch);
+    const postId = decodePathPart(retweetMatch[1] ?? "");
     if (postId === null) {
       return notFound(request, env);
     }

@@ -69,6 +69,10 @@ htmlcov/
 .complexipy_cache/
 *complexipy_cache*/
 
+# Cloudflare
+.wrangler/
+.dev.vars
+
 # Logs
 *.log
 

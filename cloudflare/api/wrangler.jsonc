@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "msmp-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "observability": {
+    "enabled": true,
+    "logs": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    },
+    "traces": {
+      "enabled": true,
+      "head_sampling_rate": 1
+    }
+  },
+  // Public UI origin plus local Next.js. No spaces: the Worker splits on commas.
+  "vars": {
+    "CORS_ORIGINS": "https://msmp-ui.mind-technology-lab.workers.dev,http://localhost:3000,http://127.0.0.1:3000"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "msmp",
+      "database_id": "8200b725-ead2-4b7c-a195-457fe5b93bce",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

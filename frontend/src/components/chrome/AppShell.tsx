@@ -1,7 +1,13 @@
+"use client";
+
 import type { ReactNode } from "react";
 
 import { RightRail } from "@/components/chrome/RightRail";
 import { SideNav } from "@/components/chrome/SideNav";
+import {
+  useViewMode,
+  ViewModeToggle,
+} from "@/components/chrome/ViewModeToggle";
 import type { UserSummary } from "@/lib/types";
 
 export function AppShell({
@@ -15,11 +21,20 @@ export function AppShell({
   wide?: boolean;
   children: React.ReactNode;
 }): ReactNode {
+  const { mode, setMode } = useViewMode();
+  const showAdminRail = !wide && mode === "admin";
+
   return (
-    <div className={wide ? "app-shell app-shell-wide" : "app-shell"}>
+    <div
+      className={showAdminRail ? "app-shell" : "app-shell app-shell-wide"}
+      data-view-mode={wide ? undefined : mode}
+    >
       <SideNav active={active} />
-      <div className="center-column">{children}</div>
-      {wide ? null : <RightRail authors={authors} />}
+      <div className="center-column">
+        {wide ? null : <ViewModeToggle mode={mode} onChange={setMode} />}
+        {children}
+      </div>
+      {showAdminRail ? <RightRail authors={authors} /> : null}
     </div>
   );
 }

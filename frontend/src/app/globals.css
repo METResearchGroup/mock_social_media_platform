@@ -200,6 +200,47 @@ input {
   animation: rise-in 420ms ease both;
 }
 
+.view-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  background: #083044;
+  color: #f4f7fb;
+}
+
+.view-toggle-label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.view-toggle-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.view-toggle-option {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #f4f7fb;
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+.view-toggle-option.is-selected {
+  background: #ffffff;
+  color: #083044;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+
 .app-header {
   position: sticky;
   top: 0;

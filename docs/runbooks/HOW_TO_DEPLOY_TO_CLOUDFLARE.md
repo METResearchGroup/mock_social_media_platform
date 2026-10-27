@@ -81,8 +81,8 @@ the live database. That is the point of the check.
 
 ## Why this is not a Container
 
-A Container is the right shape for a process that stays up between requests
-(the lab API's background query, Jetstream). This API answers and returns.
+A Container fits a process that stays up between requests. This API answers
+and returns.
 D1 holds the like and retweet counts, so the next request sees them even
 when Cloudflare starts a new isolate. A Container would bill an instance
 for a job a Worker already does.

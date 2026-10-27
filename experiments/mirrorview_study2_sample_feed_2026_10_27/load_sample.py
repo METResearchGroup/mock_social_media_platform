@@ -13,8 +13,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from experiments.mirrorview_study2_sample_feed_2026_10_27.constants import (
@@ -40,17 +42,16 @@ def _download(name: str) -> bytes:
     return store.get_bytes(f"{PREFIX}{name}")
 
 
-def _d1(statements: list[tuple[str, list[object]]]) -> None:
+def _d1_one(sql: str, params: list[object]) -> None:
     account = ensure_account()
     token = ensure_token()
     url = (
         "https://api.cloudflare.com/client/v4/accounts/"
         f"{account}/d1/database/{D1_DATABASE_ID}/query"
     )
-    payload = [{"sql": sql, "params": params} for sql, params in statements]
     request = urllib.request.Request(
         url,
-        data=json.dumps(payload).encode("utf-8"),
+        data=json.dumps({"sql": sql, "params": params}).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json",
@@ -58,11 +59,25 @@ def _d1(statements: list[tuple[str, list[object]]]) -> None:
         },
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(request, timeout=120) as response:
-            body = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        raise RuntimeError(f"D1 query failed with HTTP {exc.code}.") from exc
+    last_error: Exception | None = None
+    body: object | None = None
+    for attempt in range(5):
+        try:
+            with urllib.request.urlopen(request, timeout=120) as response:
+                body = json.loads(response.read().decode("utf-8"))
+            last_error = None
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code not in {429, 500, 502, 503, 504} or attempt == 4:
+                raise RuntimeError(f"D1 query failed with HTTP {exc.code}.") from exc
+            last_error = exc
+        except urllib.error.URLError as exc:
+            if attempt == 4:
+                raise RuntimeError("D1 query failed before a response.") from exc
+            last_error = exc
+        time.sleep(2**attempt)
+    if last_error is not None or body is None:
+        raise RuntimeError("D1 query failed before a response.")
     if not isinstance(body, dict) or body.get("success") is not True:
         raise RuntimeError("D1 query did not succeed.")
     results = body.get("result")
@@ -70,6 +85,16 @@ def _d1(statements: list[tuple[str, list[object]]]) -> None:
         for item in results:
             if isinstance(item, dict) and item.get("success") is False:
                 raise RuntimeError("D1 statement did not succeed.")
+
+
+def _d1(statements: list[tuple[str, list[object]]]) -> None:
+    if len(statements) == 1:
+        sql, params = statements[0]
+        _d1_one(sql, params)
+        return
+    workers = min(8, len(statements))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        list(pool.map(lambda item: _d1_one(item[0], item[1]), statements))
 
 
 _account: str | None = None

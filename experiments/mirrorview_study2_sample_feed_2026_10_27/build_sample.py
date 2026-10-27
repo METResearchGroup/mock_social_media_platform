@@ -16,7 +16,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from io import BytesIO
+from io import StringIO
 
 from experiments.mirrorview_study2_sample_feed_2026_10_27.constants import (
     AUTHOR_DISPLAY_NAME,
@@ -129,7 +129,7 @@ def posts_from_csv(body: bytes) -> tuple[list[Study2VariantPost], list[str]]:
     """Return variant posts and any header names outside the five known columns."""
 
     text = body.decode("utf-8-sig")
-    reader = csv.DictReader(BytesIO(text.encode("utf-8")))
+    reader = csv.DictReader(StringIO(text))
     if reader.fieldnames is None:
         raise ValueError("STUDY_2_STIMULI has no header.")
     header = list(reader.fieldnames)

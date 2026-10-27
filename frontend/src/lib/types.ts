@@ -31,3 +31,31 @@ export type PostThreadResponse = {
 export type EngagementActionResponse = {
   post: Post;
 };
+
+export type FeedSummary = {
+  id: string;
+  name: string;
+  created_at: string;
+  load_count: number;
+  last_loaded_at: string | null;
+  post_count: number;
+};
+
+export type HostedFeedItem = {
+  ref: string;
+  status: "known" | "unknown";
+  post: Post | null;
+};
+
+export type FeedDetail = {
+  feed: FeedSummary;
+  posts: HostedFeedItem[];
+};
+
+export type FeedListResponse = {
+  feeds: FeedSummary[];
+};
+
+export type CreateFeedResponse = {
+  feed: FeedSummary;
+};

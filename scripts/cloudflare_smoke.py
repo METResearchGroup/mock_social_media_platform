@@ -29,11 +29,12 @@ def request(
     *,
     method: str = "GET",
     headers: dict[str, str] | None = None,
+    body: bytes | None = None,
 ) -> tuple[int, dict[str, str], bytes]:
     merged = {"User-Agent": USER_AGENT}
     if headers:
         merged.update(headers)
-    req = urllib.request.Request(url, headers=merged, method=method)
+    req = urllib.request.Request(url, data=body, headers=merged, method=method)
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_SECONDS) as response:
             return response.status, dict(response.headers), response.read()
@@ -144,13 +145,219 @@ def check_cors(api: str, ui: str, failures: list[str]) -> None:
         failures.append(f"CORS preflight did not echo the UI origin (status {status})")
 
 
-def check_page(url: str, label: str, needles: list[str], failures: list[str]) -> None:
+def post_json(url: str, payload: object) -> tuple[int, object | None]:
+    status, _, body = request(
+        url,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+        body=json.dumps(payload).encode(),
+    )
+    return status, as_json(body)
+
+
+def require_dict(payload: object | None) -> dict[str, object] | None:
+    if isinstance(payload, dict):
+        return payload
+    return None
+
+
+def feed_summary(payload: object | None) -> dict[str, object] | None:
+    body = require_dict(payload)
+    if body is None:
+        return None
+    feed = body.get("feed")
+    if isinstance(feed, dict):
+        return feed
+    return None
+
+
+def check_page(
+    url: str,
+    label: str,
+    needles: list[str],
+    failures: list[str],
+    *,
+    expected_status: int = 200,
+) -> None:
     status, _, body = request(url)
     text = body.decode("utf-8", errors="replace")
     missing = [needle for needle in needles if needle not in text]
     print(f"GET {label} -> {status} bytes={len(body)} missing={missing}")
-    if status != 200 or missing:
+    if status != expected_status or missing:
         failures.append(f"{label} returned {status} missing={missing}")
+
+
+UNKNOWN_REF = "at://did:plc:example/app.bsky.feed.post/not-in-d1"
+
+
+def check_hosted_feeds(api: str, ui: str, failures: list[str]) -> None:
+    status, payload = post_json(
+        f"{api}/api/v1/feeds",
+        {
+            "name": "smoke feed",
+            "posts": ["post_1", "post_3", UNKNOWN_REF],
+        },
+    )
+    feed = feed_summary(payload)
+    feed_id = feed.get("id") if feed is not None else None
+    print(f"POST /api/v1/feeds -> {status} id={feed_id}")
+    if (
+        status != 201
+        or not isinstance(feed_id, str)
+        or feed is None
+        or feed.get("post_count") != 3
+        or feed.get("load_count") != 0
+    ):
+        failures.append(f"create feed returned {status} id={feed_id}")
+        return
+
+    empty_status, _ = post_json(f"{api}/api/v1/feeds", {"name": "empty", "posts": []})
+    print(f"POST /api/v1/feeds empty -> {empty_status}")
+    if empty_status != 400:
+        failures.append(f"empty feed returned {empty_status}")
+
+    detail_status, _, detail_raw = request(f"{api}/api/v1/feeds/{feed_id}")
+    detail = feed_summary(as_json(detail_raw))
+    print(
+        f"GET /api/v1/feeds/{feed_id} -> {detail_status} "
+        f"loads={None if detail is None else detail.get('load_count')}"
+    )
+    if detail_status != 200 or detail is None or detail.get("load_count") != 0:
+        failures.append("feed detail changed the load count before a page view")
+
+    first_status, _, first_raw = request(
+        f"{api}/xrpc/app.bsky.feed.getFeedSkeleton?feed={feed_id}&limit=1"
+    )
+    first = require_dict(as_json(first_raw))
+    first_items = first.get("feed") if first is not None else None
+    first_post = (
+        first_items[0].get("post")
+        if isinstance(first_items, list)
+        and first_items
+        and isinstance(first_items[0], dict)
+        else None
+    )
+    print(
+        f"GET getFeedSkeleton limit=1 -> {first_status} "
+        f"post={first_post} cursor={None if first is None else first.get('cursor')}"
+    )
+    if (
+        first_status != 200
+        or first is None
+        or first_post != "post_1"
+        or first.get("cursor") != "1"
+    ):
+        failures.append("skeleton first page did not return post_1 and cursor 1")
+
+    last_status, _, last_raw = request(
+        f"{api}/xrpc/app.bsky.feed.getFeedSkeleton?feed={feed_id}&limit=1&cursor=2"
+    )
+    last = require_dict(as_json(last_raw))
+    last_items = last.get("feed") if last is not None else None
+    last_post = (
+        last_items[0].get("post")
+        if isinstance(last_items, list)
+        and last_items
+        and isinstance(last_items[0], dict)
+        else None
+    )
+    print(f"GET getFeedSkeleton cursor=2 -> {last_status} post={last_post}")
+    if (
+        last_status != 200
+        or last is None
+        or last_post != UNKNOWN_REF
+        or "cursor" in last
+    ):
+        failures.append("skeleton last page did not return the unknown identifier")
+
+    past_status, _, past_raw = request(
+        f"{api}/xrpc/app.bsky.feed.getFeedSkeleton?feed={feed_id}&cursor=99"
+    )
+    past = require_dict(as_json(past_raw))
+    past_items = past.get("feed") if past is not None else None
+    print(f"GET getFeedSkeleton cursor=99 -> {past_status} items={past_items}")
+    if past_status != 200 or past is None or past_items != [] or "cursor" in past:
+        failures.append("skeleton cursor past the end was not an empty page")
+
+    missing_status, _, missing_raw = request(
+        f"{api}/xrpc/app.bsky.feed.getFeedSkeleton?feed=feed_does_not_exist"
+    )
+    missing = require_dict(as_json(missing_raw))
+    missing_detail = missing.get("detail") if missing is not None else None
+    print(f"GET missing skeleton -> {missing_status} detail={missing_detail!r}")
+    if missing_status != 404 or missing_detail != "Feed not found":
+        failures.append(f"missing skeleton returned {missing_status}")
+
+    bad_cursor_status, _, _ = request(
+        f"{api}/xrpc/app.bsky.feed.getFeedSkeleton?feed={feed_id}&cursor=nope"
+    )
+    print(f"GET bad cursor -> {bad_cursor_status}")
+    if bad_cursor_status != 400:
+        failures.append(f"bad cursor returned {bad_cursor_status}")
+
+    list_status, _, list_raw = request(f"{api}/api/v1/feeds")
+    listed = require_dict(as_json(list_raw))
+    listed_feeds = listed.get("feeds") if listed is not None else None
+    listed_ids = (
+        [item.get("id") for item in listed_feeds]
+        if isinstance(listed_feeds, list)
+        else []
+    )
+    print(f"GET /api/v1/feeds -> {list_status} contains={feed_id in listed_ids}")
+    if list_status != 200 or feed_id not in listed_ids:
+        failures.append("feed list did not include the new feed")
+
+    check_page(
+        f"{ui}/feed/{feed_id}",
+        "ui public feed",
+        [
+            "smoke feed",
+            "Loaded 1 time",
+            "Notes from building the analytical engine.",
+            UNKNOWN_REF,
+            "Not in this app",
+        ],
+        failures,
+    )
+    after_page_status, _, after_page_raw = request(f"{api}/api/v1/feeds/{feed_id}")
+    after_page = feed_summary(as_json(after_page_raw))
+    after_loads = after_page.get("load_count") if after_page is not None else None
+    print(f"GET detail after page -> {after_page_status} loads={after_loads}")
+    if after_loads != 1:
+        failures.append(f"public page did not record one load ({after_loads})")
+
+    check_page(
+        f"{ui}/admin/feeds/{feed_id}",
+        "ui admin detail",
+        ["smoke feed", "Page loads", "Loaded 1 time", UNKNOWN_REF],
+        failures,
+    )
+    after_admin_status, _, after_admin_raw = request(f"{api}/api/v1/feeds/{feed_id}")
+    after_admin = feed_summary(as_json(after_admin_raw))
+    admin_loads = after_admin.get("load_count") if after_admin is not None else None
+    print(f"GET detail after admin -> {after_admin_status} loads={admin_loads}")
+    if admin_loads != 1:
+        failures.append(f"admin detail changed the load count ({admin_loads})")
+
+    check_page(
+        f"{ui}/feed/{feed_id}",
+        "ui public feed reloaded",
+        ["Loaded 2 times"],
+        failures,
+    )
+    check_page(
+        f"{ui}/feed/feed_does_not_exist",
+        "ui missing feed",
+        ["Feed not found"],
+        failures,
+        expected_status=404,
+    )
+    check_page(
+        f"{ui}/admin",
+        "ui /admin",
+        ["Create a feed", "smoke feed", feed_id],
+        failures,
+    )
 
 
 def main() -> None:
@@ -171,7 +378,7 @@ def main() -> None:
     check_page(
         f"{ui}/",
         "ui /",
-        ["Home", "Notes from building the analytical engine."],
+        ["Feed host", "Open admin"],
         failures,
     )
     check_page(
@@ -189,6 +396,7 @@ def main() -> None:
         ["Post not found"],
         failures,
     )
+    check_hosted_feeds(api, ui, failures)
     if failures:
         print("FAILED")
         for failure in failures:

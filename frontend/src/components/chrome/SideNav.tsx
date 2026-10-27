@@ -1,8 +1,12 @@
-import { Bell, Home, Search, UserRound } from "lucide-react";
+import { Bell, Home, LayoutList, Search, UserRound } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-export function SideNav({ active }: { active: "home" | "post" }): ReactNode {
+export function SideNav({
+  active,
+}: {
+  active?: "home" | "post" | "admin";
+}): ReactNode {
   return (
     <nav className="side-nav" aria-label="Primary">
       <Link href="/" className="brand-lockup">
@@ -11,7 +15,7 @@ export function SideNav({ active }: { active: "home" | "post" }): ReactNode {
         </span>
         <span className="brand-copy">
           <span className="brand-name">Mock Social</span>
-          <span className="brand-tag">Local experiment feed</span>
+          <span className="brand-tag">Lab feed host</span>
         </span>
       </Link>
 
@@ -24,6 +28,16 @@ export function SideNav({ active }: { active: "home" | "post" }): ReactNode {
           >
             <Home aria-hidden="true" />
             <span>Home</span>
+          </Link>
+        </li>
+        <li>
+          <Link
+            href="/admin"
+            className={active === "admin" ? "nav-link is-active" : "nav-link"}
+            aria-current={active === "admin" ? "page" : undefined}
+          >
+            <LayoutList aria-hidden="true" />
+            <span>Admin</span>
           </Link>
         </li>
         <li>
@@ -47,7 +61,7 @@ export function SideNav({ active }: { active: "home" | "post" }): ReactNode {
       </ul>
 
       <div className="nav-footer">
-        <p className="nav-footnote">Read-only seed journey for agent runs.</p>
+        <p className="nav-footnote">Public feed host. No sign-in.</p>
       </div>
     </nav>
   );

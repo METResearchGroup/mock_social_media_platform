@@ -10,12 +10,12 @@ export function RightRail({ authors }: { authors: UserSummary[] }): ReactNode {
       <section className="rail-panel rail-hero">
         <div className="rail-kicker">
           <Sparkles aria-hidden="true" size={16} />
-          <span>Local demo</span>
+          <span>Feed host</span>
         </div>
-        <h2 className="rail-heading">Live on the feed</h2>
+        <h2 className="rail-heading">Share a feed</h2>
         <p className="rail-text">
-          Seed accounts posting into the local timeline. Open any post to read
-          the thread and try like or retweet.
+          Create a feed in admin, then share /feed/&lt;id&gt;. Posts stored in
+          this app render in full. Any other identifier shows as a placeholder.
         </p>
       </section>
 
@@ -42,9 +42,9 @@ export function RightRail({ authors }: { authors: UserSummary[] }): ReactNode {
       <section className="rail-panel">
         <h2 className="rail-heading">Try the path</h2>
         <ol className="rail-steps">
-          <li>Scan the home timeline</li>
-          <li>Open a post thread</li>
-          <li>Like and retweet once</li>
+          <li>Open admin</li>
+          <li>Paste post identifiers</li>
+          <li>Share the feed link</li>
         </ol>
       </section>
     </aside>

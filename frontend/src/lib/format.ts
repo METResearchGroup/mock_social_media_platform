@@ -1,13 +1,22 @@
 import type { Post } from "@/lib/types";
 
-export function formatTimestamp(value: string): string {
+export function loadCountLabel(count: number): string {
+  return count === 1 ? "Loaded 1 time" : `Loaded ${count} times`;
+}
+
+export function formatTimestamp(value: string, withSeconds = false): string {
   const date = new Date(value);
-  return date.toLocaleString("en-US", {
+  const options: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-  });
+    timeZone: "UTC",
+  };
+  if (withSeconds) {
+    options.second = "2-digit";
+  }
+  return date.toLocaleString("en-US", options);
 }
 
 export function initials(displayName: string): string {

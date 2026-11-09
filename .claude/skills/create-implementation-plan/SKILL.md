@@ -1,0 +1,144 @@
+---
+name: create-implementation-plan
+description: >-
+  Use when the user asks for an implementation plan. If a proposal.md from
+  /create-high-level-proposal exists, plan from it.
+disable-model-invocation: false
+metadata:
+  owner: mark
+  scope: global
+  category: planning
+---
+
+# Create Implementation Plan
+
+Produce a complete plan package up front for how to implement work.
+
+- `plan.md` (router + executive summary). Full detail lives in sibling files under the plan asset directory. Planning still runs every applicable phase.
+- Intended audience: humans skim the plan.md to get an overview of the implementation plan. Keep it high-level. Appropriate for a senior or staff engineer reviewing a project without context.
+- Tone: terse, direct, clear, executive-summary style updates. Sufficient clear detail to provide context to stakeholders without much context. However, avoids excessive verbosity and practices progressive disclosure.
+
+Anti-patterns:
+
+- `plan.md` should not have code or names of variables or interfaces.
+- `plan.md` should not dump full implementation details.
+- Avoid vague task descriptions. Better to not mention it than to use vague descriptions.
+- Avoid vague modifiers and dangling modifiers, such as "as needed", "etc.", or "follow the existing pattern", without naming the exact reference file or symbol
+- Avoid verification steps that rely on unfinished parallel work. Assume that the work in `plan.md` is self-encompassed.
+- Avoid delegated steps that requires hidden intent or unstated judgment.
+- Do not copy the proposal's code, schema tables, or file trees into `plan.md`. Link to `proposal.md` instead.
+
+## Using `proposal.md`
+
+`/create-high-level-proposal` writes a `proposal.md` before the plan. When one exists, the plan builds on it.
+
+Find the proposal in this order:
+
+1. A path the user named.
+2. A `proposal.md` in the plan folder the user named, or one that is clearly in the thread.
+3. The newest `docs/plans/*/proposal.md` whose folder has no `plan.md` yet. Use it only if its scope matches the request.
+
+If two proposals look plausible, ask. If none exists, plan without one.
+
+When you use a proposal:
+
+- Write the plan into the proposal's folder. Do not create a new folder.
+- Treat the proposal's scope, cross-cutting concerns, file structure, schema models, and confirmed decisions as settled. Do not reopen them.
+- If any item under "Decisions to confirm" is still open, meaning it is not marked confirmed or changed, stop and ask the user before you draft.
+- Build `plan.md` from the proposal. The overview and approach come from the proposal's overview and cross-cutting concerns. The steps start from the proposal's steps. "What done looks like" comes from the proposal's expected results. If you split or merge a proposal step, say why in the plan.
+- In each step file, cite the proposal sections the step implements. Take reused paths and symbols from the proposal, and use its file structure to set the files allowed to change.
+- If research contradicts the proposal, e.g., a file or symbol it names does not exist, stop and ask. Do not edit `proposal.md` yourself.
+
+Include at the top of every plan:
+
+```markdown
+## Remember
+- Exact file paths always
+- Exact commands with expected output
+- DRY, YAGNI, frequent commits
+- Tests only for production logic with real behavior
+- Delegated tasks must be impossible to misread.
+```
+
+Relevant filepaths:
+
+- `<workspace_root>/docs/plans`: where to put the work when generating a plan.
+- `<workspace_root>/docs/plans/<folder>/proposal.md`: the high-level proposal, if one exists. See "Using `proposal.md`" above.
+- `<workspace_root>/docs/runbooks/`: runbooks for that repo.
+
+Target file layout:
+
+```text
+docs/plans/<YYYY-MM-DD>_<descriptor>_<6-digit hash>/
+  proposal.md             # from /create-high-level-proposal, only if it exists
+  plan.md                 # router + executive summary
+  steps/
+    step1.md
+    step2.md
+    ...
+  images/...              # UI before/after — only if UI change
+```
+
+Omit files that are unnecessary. Never write empty N/A stubs.
+
+Start with a draft version of `plan.md`. It should have this setup:
+
+```markdown
+# (Name of Plan. Focus on 1-sentence, leading with an action verb)
+
+## Remember
+- Exact file paths always
+- Exact commands with expected output
+- DRY, YAGNI, frequent commits
+- Tests only for production logic with real behavior
+- Delegated tasks must be impossible to misread.
+
+## Overview
+
+(If `proposal.md` exists, link it here first.)
+
+## Happy flow
+
+1-2 sentence description of intended user journey. Then include a mermaid diagram of the intended change.
+
+## Approach
+
+1-2 sentence of the approach. Focus on philosophy and intention and design of approach.
+
+## Steps
+
+### Step 1: (title)
+
+(1-2 sentences of how to do this, at a high level)
+
+### Step 2: (title)
+
+(1-2 sentences of how to do this, at a high level)
+
+## What "done" looks like
+
+(enumerated list of what will be the end state of things when done)
+
+```
+
+Ask the user for confirmation here and ask for possible revisions. Once this is confirmed by the user, expand the plan to now create a separate markdown file for each step.
+
+Store these in `{workspace root}/docs/plans/{doc plan folder}/steps/{step1,step2,etc.}.md`.
+
+The setup of each step should look something like:
+
+```markdown
+# Step {n}: {name of step}
+
+{details of steps}
+```
+
+For writing each step, use the `/implement-from-spec` skill to design implementation details.
+
+Some additional rules while writing each step:
+
+- Include a list of files to inspect, files allowed to change, and files forbidden to change.
+- Include what must pass or fail for each step.
+- For a UI change, require screenshots before and after. Put these in `{workspace root}/docs/plans/{doc plan folder}/images/{before/after}/`.
+- Include a test in a step only when that step changes production logic with real behavior. Do not plan a unit test for a script, a notebook, a one-off analysis, a prototype, exploratory code (including code under `experiments/`), a constant, config, static data, or code that does not run production logic.
+- When a step needs tests, name the behaviors those tests check. Do not tell the implementer to write a failing test before the code. Do not add a pass that exists only to make a failing test pass and then refactor.

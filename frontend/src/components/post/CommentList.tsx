@@ -8,7 +8,7 @@ export function CommentList({ comments }: { comments: Post[] }): ReactNode {
     return (
       <div className="empty-comments">
         <p className="empty-title">No comments yet</p>
-        <p className="muted">Replies from the seed set will show here.</p>
+        <p className="muted">No replies yet.</p>
       </div>
     );
   }

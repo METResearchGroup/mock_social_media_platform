@@ -68,9 +68,7 @@ export function CreateFeedForm(): ReactNode {
     <form className="admin-panel" onSubmit={onSubmit}>
       <h2 className="section-heading">Create a feed</h2>
       <p className="public-note">
-        Paste one post identifier per line. Use a posts.id such as post_1, or
-        any other identifier such as an at:// URI. This page is public. There
-        is no sign-in.
+        Enter one post identifier per line, in the order you want posts to appear.
       </p>
       <div className="field">
         <label htmlFor="feed-name">Name</label>
@@ -92,7 +90,7 @@ export function CreateFeedForm(): ReactNode {
           value={rawPosts}
           onChange={(event) => setRawPosts(event.target.value)}
           spellCheck={false}
-          placeholder={"post_1\npost_3\nat://did:plc:example/app.bsky.feed.post/3kzo2exfi5z2r"}
+          placeholder={"One identifier per line"}
           required
         />
       </div>

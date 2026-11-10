@@ -16,7 +16,7 @@ const fraunces = Fraunces({
 
 export const metadata: Metadata = {
   title: "Mock Social",
-  description: "Public host for ordered lists of post identifiers",
+  description: "A workspace for social media feeds and experiments",
 };
 
 export default function RootLayout({

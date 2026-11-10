@@ -10,7 +10,8 @@
     "dev:vinext": "vite dev --port 3001",
     "build:vinext": "vite build",
     "start:vinext": "wrangler dev --config dist/server/wrangler.json",
-    "deploy:vinext": "node scripts/deploy-cloudflare.mjs"
+    "deploy:vinext": "node scripts/deploy-cloudflare.mjs",
+    "test": "vitest run"
   },
   "dependencies": {
     "@vinext/cloudflare": "^1.2.1",
@@ -25,6 +26,8 @@
     "@cloudflare/vite-plugin": "^1.65.0",
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -32,9 +35,11 @@
     "@vitejs/plugin-rsc": "^0.5.38",
     "eslint": "^9",
     "eslint-config-next": "^16.3.0",
+    "jsdom": "^31.0.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "^8.3.5",
+    "vitest": "^4.1.12",
     "wrangler": "^4.153.0"
   },
   "type": "module"

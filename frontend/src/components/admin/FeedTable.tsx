@@ -1,70 +1,18 @@
 "use client";
-
-import { useRouter } from "next/navigation";
-import type { KeyboardEvent, ReactNode } from "react";
-
-export type FeedTableRow = {
-  id: string;
-  name: string;
-  postCount: number;
-  loadCount: number;
-  createdLabel: string;
-};
-
+import Link from "next/link";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+export type FeedTableRow = { id: string; name: string; postCount: number; loadCount: number; createdAt: string; createdLabel: string };
+type SortKey = "name" | "id" | "postCount" | "loadCount" | "createdAt";
+const columns: { key: SortKey; label: string }[] = [{ key: "name", label: "Name" }, { key: "id", label: "ID" }, { key: "postCount", label: "Posts" }, { key: "loadCount", label: "Loads" }, { key: "createdAt", label: "Created" }];
+const PAGE_SIZE = 25;
 export function FeedTable({ rows }: { rows: FeedTableRow[] }): ReactNode {
-  const router = useRouter();
-
-  function openDetail(id: string): void {
-    router.push(`/admin/feeds/${id}`);
-  }
-
-  function onKeyDown(event: KeyboardEvent<HTMLTableRowElement>, id: string): void {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      openDetail(id);
-    }
-  }
-
-  return (
-    <div className="table-wrap">
-      <table className="feed-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Id</th>
-            <th>Posts</th>
-            <th>Loads</th>
-            <th>Created</th>
-            <th>Link</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr
-              key={row.id}
-              className="clickable-row"
-              tabIndex={0}
-              onClick={() => openDetail(row.id)}
-              onKeyDown={(event) => onKeyDown(event, row.id)}
-            >
-              <td>{row.name}</td>
-              <td className="feed-id">{row.id}</td>
-              <td>{row.postCount}</td>
-              <td>{row.loadCount}</td>
-              <td>{row.createdLabel}</td>
-              <td>
-                <a
-                  className="text-link"
-                  href={`/feed/${row.id}`}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  /feed/{row.id}
-                </a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+ const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({ key: "createdAt", direction: "desc" });
+ const [page, setPage] = useState(0); const [selected, setSelected] = useState<FeedTableRow | null>(null); const dialog = useRef<HTMLDialogElement>(null);
+ useEffect(() => { if (selected && dialog.current && !dialog.current.open) dialog.current.showModal(); }, [selected]);
+ const sorted = useMemo(() => [...rows].sort((a, b) => { const left = a[sort.key]; const right = b[sort.key]; const comparison = sort.key === "createdAt" ? Date.parse(a.createdAt) - Date.parse(b.createdAt) : typeof left === "number" && typeof right === "number" ? left - right : String(left).localeCompare(String(right)); return (comparison || a.id.localeCompare(b.id)) * (sort.direction === "asc" ? 1 : -1); }), [rows, sort]);
+ const pageCount = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE)); const currentPage = Math.min(page, pageCount - 1); const visible = sorted.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+ function changeSort(key: SortKey): void { setSort((previous) => ({ key, direction: previous.key === key && previous.direction === "asc" ? "desc" : "asc" })); setPage(0); }
+ return <><div className="table-wrap"><table className="feed-table"><thead><tr>{columns.map(({ key, label }) => <th key={key} scope="col" aria-sort={sort.key === key ? (sort.direction === "asc" ? "ascending" : "descending") : undefined}><button type="button" className="sort-button" onClick={() => changeSort(key)}>{label} <span aria-hidden="true">{sort.key === key ? (sort.direction === "asc" ? "↑" : "↓") : "↕"}</span></button></th>)}</tr></thead><tbody>{visible.map((row) => <tr key={row.id} className="clickable-row" onClick={() => setSelected(row)}><td><button type="button" className="feed-open-button" onClick={(event) => { event.stopPropagation(); setSelected(row); }}>{row.name}</button></td><td className="feed-id">{row.id}</td><td>{row.postCount}</td><td>{row.loadCount}</td><td>{row.createdLabel}</td></tr>)}</tbody></table></div>
+ <div className="pagination" aria-label="Feed pages"><span>Showing {currentPage * PAGE_SIZE + 1}–{Math.min((currentPage + 1) * PAGE_SIZE, rows.length)} of {rows.length}</span><div><button className="secondary-button" type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>Previous</button><span>Page {currentPage + 1} of {pageCount}</span><button className="secondary-button" type="button" disabled={currentPage >= pageCount - 1} onClick={() => setPage(currentPage + 1)}>Next</button></div></div>
+ <dialog ref={dialog} className="feed-dialog" aria-labelledby="feed-dialog-title" onClose={() => setSelected(null)}><h2 id="feed-dialog-title">Open {selected?.name}</h2><p>Choose how you would like to view this feed.</p><div className="dialog-actions">{selected && <><Link className="primary-link" href={`/admin/feeds/${encodeURIComponent(selected.id)}`}>Admin view</Link><a className="secondary-button" href={`/feed/${encodeURIComponent(selected.id)}`} target="_blank" rel="noopener noreferrer">User view <span className="sr-only">(opens in a new tab)</span></a></>}<button className="secondary-button" type="button" onClick={() => dialog.current?.close()}>Cancel</button></div></dialog></>;
 }

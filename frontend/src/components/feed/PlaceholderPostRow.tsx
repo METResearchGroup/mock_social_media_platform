@@ -17,12 +17,11 @@ export function PlaceholderPostRow({
       </div>
       <div className="post-body">
         <div className="post-meta">
-          <span className="display-name">Not in this app</span>
+          <span className="display-name">Post unavailable</span>
         </div>
         <code className="placeholder-ref">{postRef}</code>
         <p className="composer-note">
-          This identifier is not in the posts table. It stays in the feed
-          skeleton so a caller can resolve it.
+          This post is currently unavailable.
         </p>
       </div>
     </article>
